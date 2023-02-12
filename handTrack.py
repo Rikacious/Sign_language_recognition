@@ -21,7 +21,7 @@ class handTracker():
     def checkFrameVisibility(self, image):
         blur = cv2.blur(image, (5,5))
         mean = np.mean(blur)
-        return(mean > 108 and True or False)
+        return(mean > 80 and True or False)
 
     def getHandPosition(self, image, handNo=0):
         imageRGB = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -44,54 +44,53 @@ class handTracker():
             _, x17, y17 = self.lmList[17]
 
             visibility = math.sqrt((x17-x5)**2 + (y17-y5)**2)
+            # print(visibility)
         
-        return(visibility)
+        return(visibility > 55 and True or False)
 
-    def showTextOnScreen(self, image, found = True):
+    def showTextOnScreen(self, image, isDark=True, isHandVisible=False):
         fontScale = 1
         thickness = 2
         font = cv2.FONT_HERSHEY_SIMPLEX
-        color = found and (0, 255, 0) or (0, 0, 255)
 
         gap = 0.1
         boxStart = (int(image.shape[1] * gap), int(image.shape[0] * gap))
-        boxEnd = (int(image.shape[1] * (1-gap)), int(image.shape[0] * (1-gap)))
 
-        text = found and 'Hands Detected Properly' or 'Hands Not Detected Properly'
+        if isDark:
+            color = (0, 0, 255)
+            text = "Video is Too Dark"
+        else:
+            if isHandVisible:
+                color = (0, 255, 0)
+                text = "Hand is Visible Properly"
+            else:
+                color = (0, 0, 255)
+                text = "Hand Not Visible"
+
         textSize = cv2.getTextSize(text, font, fontScale, thickness)[0]
         textX = int((image.shape[1] - textSize[0]) / 2)
         textY = int((boxStart[1] + textSize[1]) / 2)
 
         cv2.putText(image, text, (textX, textY), font, fontScale, color, thickness, cv2.LINE_AA)
 
-        if not found:
-            hintFontScale = 0.8
-            hintThickness = 1
-            hint = 'Place the hands inside the Blue Rectangle'
-
-            hintSize = cv2.getTextSize(hint, font, hintFontScale, hintThickness)[0]
-            textX = int((image.shape[1] - hintSize[0]) / 2)
-            hintY = int(((boxStart[1] + hintSize[1]) / 2) + boxEnd[1])
-
-            cv2.putText(image, hint, (textX, hintY), font, hintFontScale, color, hintThickness, cv2.LINE_AA)
+        # textX = int((image.shape[1] - hintSize[0]) / 2)
+        # hintY = int(((boxStart[1] + hintSize[1]) / 2) + int(image.shape[0] * (1-gap))
 
         return image
 
-    def handsFinder(self, image, found = False):
-        if found and self.results.multi_hand_landmarks:
+    def handsFinder(self, image):
+        if self.results.multi_hand_landmarks:
             for handLms in self.results.multi_hand_landmarks:
                 self.mpDraw.draw_landmarks(image, handLms, self.mpHands.HAND_CONNECTIONS)
-
-        image = self.showTextOnScreen(image, found)
 
         return image
 
     def showFPS(self, image):
         self.currentTime = time.time()
-        fps = 1 / (self.currentTime-self.previousTime)
+        fps = 1 / (self.currentTime - self.previousTime)
         self.previousTime = self.currentTime
         # Displaying FPS on the image
-        cv2.putText(image, str(int(fps))+" FPS", (10, 70), cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
+        cv2.putText(image, str(int(fps))+" FPS", (0, 20), cv2.FONT_HERSHEY_COMPLEX, 0.65, (0,0,255), 1)
 
         return image
 
@@ -101,23 +100,22 @@ def main():
     tracker = handTracker(maxHands=1)
 
     while vc.isOpened():
-        success, image = vc.read()
+        success, frame = vc.read()
+        frameVisible = tracker.checkFrameVisibility(frame)
 
-        frameVisible = tracker.checkFrameVisibility(image)
-
-        if frameVisible:
-            tracker.getHandPosition(image)
-
-            handVisibility = tracker.getHandVisibility()
-            print(handVisibility)
-
-            # lmList = tracker.positionFinder(image)
-
-            image = tracker.handsFinder(image, True)
+        if not frameVisible:
+            image = tracker.showTextOnScreen(frame, isDark=True)
         else:
-            print('DARK')
+            tracker.getHandPosition(frame)
+            handVisible = tracker.getHandVisibility()
 
-        image = tracker.showFPS(image)
+            if(handVisible):
+                image = tracker.handsFinder(frame)
+                image = tracker.showTextOnScreen(image, isDark=False, isHandVisible=True)
+            else:
+                image = tracker.showTextOnScreen(frame, isDark=False, isHandVisible=False)
+
+        image = tracker.showFPS(image) # Adding FPS to the Image
         cv2.imshow("Hand Gesture Detection", image)
         success, image = vc.read()
         
