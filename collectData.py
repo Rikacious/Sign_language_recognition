@@ -1,9 +1,7 @@
-import cv2
-import mediapipe as mp
-import numpy as np
-import time
-import math
 import os
+import cv2
+import numpy as np
+import mediapipe as mp
 
 
 class dataCollection:

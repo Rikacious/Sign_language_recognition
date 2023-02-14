@@ -1,8 +1,10 @@
 import cv2
-import mediapipe as mp
-import numpy as np
 import time
 import math
+import numpy as np
+import mediapipe as mp
+
+from tensorflow import keras
 
 
 class handTracker():
@@ -14,11 +16,14 @@ class handTracker():
         self.trackCon = trackCon
         self.currentTime = 0
         self.previousTime = 0
+        self.sequence = []
+        self.sentence = []
         self.mpHands = mp.solutions.hands
         self.hands = self.mpHands.Hands(self.mode, self.maxHands,self.modelComplex, self.detectionCon, self.trackCon)
         self.mpDraw = mp.solutions.drawing_utils
+        self.model = keras.models.load_model('action.h5')
 
-    def showTextOnScreen(self, image, isDark=True, isHandVisible=False):
+    def showTextOnScreen(self, image, text='', isDark=True, isHandVisible=False):
         fontScale = 1
         thickness = 2
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -31,8 +36,11 @@ class handTracker():
             text = "Video is Too Dark"
         else:
             if isHandVisible:
-                color = (0, 255, 0)
-                text = "Hand is Visible Properly"
+                if text == '' :
+                    color = (0, 255, 0)
+                    text = "Hand is Visible Properly"
+                else:
+                    color = (245, 117, 16)
             else:
                 color = (0, 0, 255)
                 text = "Hand Not Visible"
@@ -97,10 +105,26 @@ class handTracker():
             [res.x, res.y, res.z] for res in self.results.multi_hand_landmarks[0].landmark
         ]).flatten()
 
+    def getPrediction(self):
+        self.sequence.append(self.keyPoints)
+        self.sequence = self.sequence[-10:]
+        prediction = ''
+
+        actions = np.array(['ONE', 'TWO', 'THREE'])
+
+        if len(self.sequence) == 10:
+            predict = self.model.predict(np.expand_dims(self.sequence, axis=0))[0]
+            maxPredict = np.argmax(predict)
+
+            if(predict[maxPredict] > 0.75):
+                prediction = actions[maxPredict]
+        
+        return prediction
+
 
 def main():
     vc = cv2.VideoCapture(0)
-    tracker = handTracker()
+    tracker = handTracker(maxHands=1)
 
     while vc.isOpened():
         success, frame = vc.read()
@@ -115,9 +139,15 @@ def main():
 
             if(handVisible):
                 image = tracker.handsFinder(frame) # Showing Hand Links in the Frame
-                image = tracker.showTextOnScreen(image, isDark=False, isHandVisible=True)
 
                 tracker.getKeyPoints()
+                prediction = tracker.getPrediction()
+
+                if prediction != '':
+                    image = tracker.showTextOnScreen(image, text=prediction, isDark=False, isHandVisible=True)
+                else:
+                    image = tracker.showTextOnScreen(image, isDark=False, isHandVisible=True)
+
             else:
                 image = tracker.showTextOnScreen(frame, isDark=False, isHandVisible=False)
 
