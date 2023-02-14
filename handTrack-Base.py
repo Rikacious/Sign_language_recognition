@@ -1,6 +1,7 @@
 import cv2
 import mediapipe as mp
 import numpy as np
+import time
 
 
 class handTracker():
@@ -99,6 +100,9 @@ class handTracker():
 def main():
     vc = cv2.VideoCapture(0)
 
+    currentTime = 0
+    previousTime = 0
+
     if vc.isOpened(): # try to get the first frame
         success, image = vc.read()
         tracker = handTracker(maxHands=1, dimension=image.shape)
@@ -116,7 +120,12 @@ def main():
 
         image = tracker.handsFinder(image, (len(lmList) > 0))
 
-        # print(lmList)
+        # Adding FPS to the Image
+        currentTime = time.time()
+        fps = 1 / (currentTime - previousTime)
+        previousTime = currentTime
+        # Displaying FPS on the image
+        cv2.putText(image, str(int(fps))+" FPS", (0, 20), cv2.FONT_HERSHEY_COMPLEX, 0.65, (0,0,255), 1)
 
         cv2.imshow("Hand Gesture Detection", image)
         success, image = vc.read()

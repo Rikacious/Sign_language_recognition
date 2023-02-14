@@ -18,36 +18,6 @@ class handTracker():
         self.hands = self.mpHands.Hands(self.mode, self.maxHands,self.modelComplex, self.detectionCon, self.trackCon)
         self.mpDraw = mp.solutions.drawing_utils
 
-    def checkFrameVisibility(self, image):
-        blur = cv2.blur(image, (5,5))
-        mean = np.mean(blur)
-        return(mean > 80 and True or False)
-
-    def getHandPosition(self, image, handNo=0):
-        imageRGB = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        self.results = self.hands.process(imageRGB)
-        self.lmList = []
-
-        if self.results.multi_hand_landmarks:
-            Hand = self.results.multi_hand_landmarks[handNo]
-
-            for id, lm in enumerate(Hand.landmark):
-                h,w,c = image.shape
-                cx,cy = int(lm.x * w), int(lm.y * h)
-                self.lmList.append([id, cx, cy])
-
-    def getHandVisibility(self):
-        visibility = 0
-
-        if len(self.lmList) > 0:
-            _, x5, y5 = self.lmList[5]
-            _, x17, y17 = self.lmList[17]
-
-            visibility = math.sqrt((x17-x5)**2 + (y17-y5)**2)
-            # print(visibility)
-        
-        return(visibility > 55 and True or False)
-
     def showTextOnScreen(self, image, isDark=True, isHandVisible=False):
         fontScale = 1
         thickness = 2
@@ -78,13 +48,6 @@ class handTracker():
 
         return image
 
-    def handsFinder(self, image):
-        if self.results.multi_hand_landmarks:
-            for handLms in self.results.multi_hand_landmarks:
-                self.mpDraw.draw_landmarks(image, handLms, self.mpHands.HAND_CONNECTIONS)
-
-        return image
-
     def showFPS(self, image):
         self.currentTime = time.time()
         fps = 1 / (self.currentTime - self.previousTime)
@@ -94,24 +57,67 @@ class handTracker():
 
         return image
 
+    def checkFrameVisibility(self, image):
+        blur = cv2.blur(image, (5,5))
+        mean = np.mean(blur)
+        return(mean > 80 and True or False)
+
+    def getHandPosition(self, image):
+        imageRGB = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        self.results = self.hands.process(imageRGB)
+
+    def getHandVisibility(self):
+        visibility = 0
+
+        if self.results.multi_hand_landmarks:
+            handMarks = self.results.multi_hand_landmarks[0]
+            x5, y5 = tuple(np.multiply(np.array((
+                handMarks.landmark[self.mpHands.HandLandmark.INDEX_FINGER_MCP].x,
+                handMarks.landmark[self.mpHands.HandLandmark.INDEX_FINGER_MCP].y
+            )), [640, 480]).astype(int))
+            x17, y17 = tuple(np.multiply(np.array((
+                handMarks.landmark[self.mpHands.HandLandmark.PINKY_MCP].x,
+                handMarks.landmark[self.mpHands.HandLandmark.PINKY_MCP].y
+            )), [640, 480]).astype(int))
+
+            visibility = math.sqrt((x17-x5)**2 + (y17-y5)**2)
+            # print(visibility)
+        
+        return(visibility > 50 and True or False)
+
+    def handsFinder(self, image):
+        if self.results.multi_hand_landmarks:
+            handLimbs = self.results.multi_hand_landmarks[0]
+            self.mpDraw.draw_landmarks(image, handLimbs, self.mpHands.HAND_CONNECTIONS)
+
+        return image
+
+    def getKeyPoints(self):
+        self.keyPoints = np.array([
+            [res.x, res.y, res.z] for res in self.results.multi_hand_landmarks[0].landmark
+        ]).flatten()
+
 
 def main():
     vc = cv2.VideoCapture(0)
-    tracker = handTracker(maxHands=1)
+    tracker = handTracker()
 
     while vc.isOpened():
         success, frame = vc.read()
-        frameVisible = tracker.checkFrameVisibility(frame)
+        frame = cv2.flip(frame, 1) # Flipping Frame to get Mirror Effect
+        frameVisible = tracker.checkFrameVisibility(frame) # Checking Frame Visibility
 
         if not frameVisible:
             image = tracker.showTextOnScreen(frame, isDark=True)
         else:
-            tracker.getHandPosition(frame)
-            handVisible = tracker.getHandVisibility()
+            tracker.getHandPosition(frame) # Track Hand Position with MediaPipe
+            handVisible = tracker.getHandVisibility() # Checking Hand Visibility
 
             if(handVisible):
-                image = tracker.handsFinder(frame)
+                image = tracker.handsFinder(frame) # Showing Hand Links in the Frame
                 image = tracker.showTextOnScreen(image, isDark=False, isHandVisible=True)
+
+                tracker.getKeyPoints()
             else:
                 image = tracker.showTextOnScreen(frame, isDark=False, isHandVisible=False)
 
