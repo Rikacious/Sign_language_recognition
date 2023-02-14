@@ -1,14 +1,20 @@
+import os
 import cv2
 import time
 import math
+import json
 import numpy as np
 import mediapipe as mp
 
-from tensorflow import keras
+from tensorflow.keras import models
 
 
 class handTracker():
     def __init__(self, mode=False, maxHands=2, detectionCon=0.8, modelComplexity=1, trackCon=0.5):
+        jsonFile = open('settings.json')
+        settings = json.load(jsonFile)
+        jsonFile.close()
+
         self.mode = mode
         self.maxHands = maxHands
         self.detectionCon = detectionCon
@@ -21,7 +27,9 @@ class handTracker():
         self.mpHands = mp.solutions.hands
         self.hands = self.mpHands.Hands(self.mode, self.maxHands,self.modelComplex, self.detectionCon, self.trackCon)
         self.mpDraw = mp.solutions.drawing_utils
-        self.model = keras.models.load_model('action.h5')
+        self.sequenceLength = settings['sequenceLength']
+        self.actions = np.array(settings['actions'])
+        self.model = models.load_model(os.path.join(settings['modelsDir'], settings['lastModel']))
 
     def showTextOnScreen(self, image, text='', isDark=True, isHandVisible=False):
         fontScale = 1
@@ -36,11 +44,7 @@ class handTracker():
             text = "Video is Too Dark"
         else:
             if isHandVisible:
-                if text == '' :
-                    color = (0, 255, 0)
-                    text = "Hand is Visible Properly"
-                else:
-                    color = (245, 117, 16)
+                color = (245, 117, 16)
             else:
                 color = (0, 0, 255)
                 text = "Hand Not Visible"
@@ -107,17 +111,16 @@ class handTracker():
 
     def getPrediction(self):
         self.sequence.append(self.keyPoints)
-        self.sequence = self.sequence[-10:]
+        self.sequence = self.sequence[(self.sequenceLength * -1):]
         prediction = ''
 
-        actions = np.array(['ONE', 'TWO', 'THREE'])
-
-        if len(self.sequence) == 10:
+        if len(self.sequence) == self.sequenceLength:
             predict = self.model.predict(np.expand_dims(self.sequence, axis=0))[0]
             maxPredict = np.argmax(predict)
+            # print(predict)
 
-            if(predict[maxPredict] > 0.75):
-                prediction = actions[maxPredict]
+            if(predict[maxPredict] > 0.8):
+                prediction = self.actions[maxPredict]
         
         return prediction
 

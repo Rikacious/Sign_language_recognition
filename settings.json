@@ -1,0 +1,15 @@
+{
+    "noSequence": 30,
+    "sequenceLength": 10,
+    "logDir": "Logs_TBoard",
+    "rawDataDir": "MP_DATA",
+    "modelsDir": "Trained_Models",
+    "lastModel": "493cb2ee-ac7a-11ed-a4dc-244bfe8eca8e.h5",
+    "collectActions": [],
+    "actions": [
+        "ONE",
+        "TWO",
+        "THREE",
+        "FOUR"
+    ]
+}

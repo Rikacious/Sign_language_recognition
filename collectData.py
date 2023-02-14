@@ -1,24 +1,36 @@
 import os
 import cv2
+import json
 import numpy as np
 import mediapipe as mp
 
 
 class dataCollection:
     def __init__(self, detectionCon=0.8, modelComplexity=1, trackCon=0.5):
+        jsonFile = open('settings.json')
+        settings = json.load(jsonFile)
+        jsonFile.close()
+        
         self.detectionCon = detectionCon
         self.modelComplex = modelComplexity
         self.trackCon = trackCon
-        self.DATA_PATH = os.path.join('MP_DATA')
+        self.noSequence = settings['noSequence']
+        self.sequenceLength = settings['sequenceLength']
+        self.DATA_FOLDER = os.path.join(settings['rawDataDir'])
+        self.createActions = np.array(settings['collectActions'])
         self.mpHands = mp.solutions.hands
         self.hands = self.mpHands.Hands(False, 2,self.modelComplex, self.detectionCon, self.trackCon)
         self.mpDraw = mp.solutions.drawing_utils
+    
+    @property
+    def settingsParameters(self):
+        return self.createActions, self.noSequence, self.sequenceLength
 
-    def createDirectories(self, actions, noSequence):
-        for action in actions:
-            for sequence in range(noSequence):
+    def createDirectories(self):
+        for action in self.createActions:
+            for sequence in range(self.noSequence):
                 try:
-                    os.makedirs(os.path.join(self.DATA_PATH, action, str(sequence)))
+                    os.makedirs(os.path.join(self.DATA_FOLDER, action, str(sequence)))
                 except:
                     pass
 
@@ -65,26 +77,32 @@ class dataCollection:
             [res.x, res.y, res.z] for res in self.results.multi_hand_landmarks[0].landmark
         ]).flatten() if self.results.multi_hand_landmarks else np.zeros(21*3)
 
-        npyPath = os.path.join(self.DATA_PATH, action, str(sequence), str(frameNum))
+        npyPath = os.path.join(self.DATA_FOLDER, action, str(sequence), str(frameNum))
         np.save(npyPath, keyPoints)
 
+    def updateSettings(self):
+        jsonFile = open('settings.json', 'r+')
+        settings = json.load(jsonFile)
+        settings['actions'].extend(settings['collectActions'])
+        settings['collectActions'] = []
+        jsonFile.seek(0)
+        jsonFile.truncate()
+        json.dump(settings, jsonFile, indent=4)
+        jsonFile.close()
 
 
 def main():
-    noSequence = 30
-    sequenceLength = 10
-    actions = ["ONE", "TWO", "THREE"]
-
     vc = cv2.VideoCapture(0)
 
     if vc.isOpened():
         collect = dataCollection()
-        # collect.createDirectories(actions, noSequence)
-        
+        collect.createDirectories()
+        # Collecting Parameters Getting
+        actions, noSequence, sequenceLength = collect.settingsParameters
+
         for action in actions:
             for sequence in range(noSequence):
                 for frameNum in range(sequenceLength):
-
                     success, frame = vc.read()
                     frame = cv2.flip(frame, 1) # Flipping Frame to get Mirror Effect
 
@@ -92,17 +110,19 @@ def main():
                     image = collect.handsFinder(frame) # Showing Hand Links in the Frame
 
                     if frameNum == 0:
-                        print("First Frame", action, sequence)
+                        print(f"{action} || Video: {sequence} || Frame: 0 || WAITING")
                         cv2.imshow("Collecting Hand Data", image)
                         cv2.waitKey(3000)
                     else:
-                        print("Other Frames", action,sequence)
+                        print(f"{action} || Video: {sequence} || Frame: {frameNum}")
                         cv2.imshow("Collecting Hand Data", image)
 
                     collect.storeKeyPoints(action, sequence, frameNum)
         
                     if cv2.waitKey(10) == 27: # exit on ESC
                         break
+
+        collect.updateSettings()
         
         vc.release()
         cv2.destroyAllWindows()
