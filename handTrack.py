@@ -110,8 +110,6 @@ class handTracker():
         self.keyPoints = self.keyPoints[(self.sequenceLength * -1):]
 
     def getPrediction(self):
-        prediction = ''
-
         if len(self.keyPoints) == self.sequenceLength:
             predict = self.model.predict(np.expand_dims(self.keyPoints, axis=0))[0]
             maxPredict = np.argmax(predict)
