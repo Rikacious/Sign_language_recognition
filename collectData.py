@@ -3,10 +3,11 @@ import cv2
 import json
 import numpy as np
 import mediapipe as mp
+from threading import Thread
 
 
 class dataCollection:
-    def __init__(self, detectionCon=0.8, modelComplexity=1, trackCon=0.5):
+    def __init__(self, detectionCon=0.5, modelComplexity=1, trackCon=0.5):
         jsonFile = open('settings.json')
         settings = json.load(jsonFile)
         jsonFile.close()
@@ -28,11 +29,13 @@ class dataCollection:
 
     def createDirectories(self):
         for action in self.createActions:
+            print(f"Creating Directory for {action}")
             for sequence in range(self.noSequence):
                 try:
                     os.makedirs(os.path.join(self.DATA_FOLDER, action, str(sequence)))
                 except:
                     pass
+            print(f"Directory Created for {action}")        
 
     def showTextOnScreen(self, image, isDark=True, isHandVisible=False):
         fontScale = 1
@@ -93,15 +96,31 @@ class dataCollection:
 
 def main():
     vc = cv2.VideoCapture(0)
+    vc.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    vc.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    vc.set(cv2.CAP_PROP_FPS, 30)
+    vc.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
 
     if vc.isOpened():
-        collect = dataCollection()
-        collect.createDirectories()
+        collect = dataCollection(detectionCon=0.6)
+        Thread(target=collect.createDirectories).start()
+        # collect.createDirectories()
         # Collecting Parameters Getting
         actions, noSequence, sequenceLength = collect.settingsParameters
 
         for action in actions:
             for sequence in range(noSequence):
+                print(f"{action} || Video: {sequence} || Frame: 0 || WAITING")
+                for i in range(70):
+                    success, frame = vc.read()
+                    frame = cv2.flip(frame, 1) # Flipping Frame to get Mirror Effect
+
+                    collect.getHandPosition(frame) # Track Hand Position with MediaPipe
+                    image = collect.handsFinder(frame) # Showing Hand Links in the Frame
+
+                    cv2.imshow("Collecting Hand Data", image)
+                    cv2.waitKey(10)
+
                 for frameNum in range(sequenceLength):
                     success, frame = vc.read()
                     frame = cv2.flip(frame, 1) # Flipping Frame to get Mirror Effect
@@ -109,14 +128,10 @@ def main():
                     collect.getHandPosition(frame) # Track Hand Position with MediaPipe
                     image = collect.handsFinder(frame) # Showing Hand Links in the Frame
 
-                    if frameNum == 0:
-                        print(f"{action} || Video: {sequence} || Frame: 0 || WAITING")
-                        cv2.imshow("Collecting Hand Data", image)
-                        cv2.waitKey(3000)
-                    else:
+                    if frameNum != 0:
                         print(f"{action} || Video: {sequence} || Frame: {frameNum}")
-                        cv2.imshow("Collecting Hand Data", image)
-
+                    
+                    cv2.imshow("Collecting Hand Data", image)
                     collect.storeKeyPoints(action, sequence, frameNum)
         
                     if cv2.waitKey(10) == 27: # exit on ESC

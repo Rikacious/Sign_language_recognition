@@ -4,12 +4,13 @@
     "logDir": "Logs_TBoard",
     "rawDataDir": "MP_DATA",
     "modelsDir": "Trained_Models",
-    "lastModel": "493cb2ee-ac7a-11ed-a4dc-244bfe8eca8e.h5",
+    "lastModel": "e6467cd0-acf5-11ed-8cd8-244bfe8eca8e.h5",
     "collectActions": [],
     "actions": [
         "ONE",
         "TWO",
         "THREE",
-        "FOUR"
+        "FOUR",
+        "FIVE"
     ]
 }

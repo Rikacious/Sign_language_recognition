@@ -69,7 +69,7 @@ class TrainDataset:
         self.model.add(Dense(self.actions.shape[0], activation='softmax'))
 
         self.model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['categorical_accuracy'])
-        self.model.fit(seqTrain, lblTrain, epochs=200, callbacks=[tbCallback])
+        self.model.fit(seqTrain, lblTrain, epochs=180, callbacks=[tbCallback])
         self.model.summary()
 
     def predictData(self):
@@ -104,7 +104,6 @@ def main():
     trainModel = True
 
     train = TrainDataset()
-    train.loadStoredModel()
     train.getStoredData()
 
     if trainModel:
@@ -112,6 +111,7 @@ def main():
         train.predictData()
         train.storeTrainedModel()
     else:
+        train.loadStoredModel()
         train.predictData()
 
 
