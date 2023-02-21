@@ -33,10 +33,7 @@ class TrainDataset:
 
         for action in self.actions:
             for sequence in range(self.noSequence):
-                window = []
-                for frameNum in range(self.sequenceLength):
-                    res = np.load(os.path.join(self.DATA_FOLDER, action, str(sequence), "{}.npy".format(frameNum)))
-                    window.append(res)
+                window = np.load(os.path.join(self.DATA_FOLDER, action, f"{sequence}.npy"))
                 sequences.append(window)
                 labels.append(labelMap[action])
 
@@ -60,7 +57,7 @@ class TrainDataset:
         lblTrain = self.labels[0]
 
         self.model = models.Sequential()
-        self.model.add(LSTM(64, return_sequences=True, activation='relu', input_shape=(10,63)))
+        self.model.add(LSTM(64, return_sequences=True, activation='relu', input_shape=(self.sequenceLength, 63*2)))
         self.model.add(LSTM(128, return_sequences=True, activation='relu'))
         self.model.add(LSTM(64, return_sequences=False, activation='relu'))
 
@@ -105,7 +102,7 @@ def main():
 
     train = TrainDataset()
     train.getStoredData()
-
+    
     if trainModel:
         train.startTrainning()
         train.predictData()
@@ -113,6 +110,7 @@ def main():
     else:
         train.loadStoredModel()
         train.predictData()
+    
 
 
 if __name__ == "__main__":

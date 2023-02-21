@@ -16,17 +16,12 @@ class handTracker():
         settings = json.load(jsonFile)
         jsonFile.close()
 
-        self.mode = mode
-        self.maxHands = maxHands
-        self.detectionCon = detectionCon
-        self.modelComplex = modelComplexity
-        self.trackCon = trackCon
         self.currentTime = 0
         self.previousTime = 0
         self.sentence = []
         self.keyPoints = []
         self.mpHands = mp.solutions.hands
-        self.hands = self.mpHands.Hands(self.mode, self.maxHands,self.modelComplex, self.detectionCon, self.trackCon)
+        self.hands = self.mpHands.Hands(mode, maxHands, modelComplexity, detectionCon, trackCon)
         self.mpDraw = mp.solutions.drawing_utils
         self.sequenceLength = settings['sequenceLength']
         self.actions = np.array(settings['actions'])
@@ -78,36 +73,49 @@ class handTracker():
         self.results = self.hands.process(imageRGB)
 
     def getHandVisibility(self):
-        visibility = 0
+        visibility = False
+        threshold = 0.015
+        handIndex = [np.zeros(21*3), np.zeros(21*3)]
 
         if self.results.multi_hand_landmarks:
-            handMarks = self.results.multi_hand_landmarks[0]
-            x5, y5 = tuple(np.multiply(np.array((
-                handMarks.landmark[self.mpHands.HandLandmark.INDEX_FINGER_MCP].x,
-                handMarks.landmark[self.mpHands.HandLandmark.INDEX_FINGER_MCP].y
-            )), [640, 480]).astype(int))
-            x17, y17 = tuple(np.multiply(np.array((
-                handMarks.landmark[self.mpHands.HandLandmark.PINKY_MCP].x,
-                handMarks.landmark[self.mpHands.HandLandmark.PINKY_MCP].y
-            )), [640, 480]).astype(int))
+            if(len(self.results.multi_handedness) > 1):
+                for idx, hand_landmark in enumerate(self.results.multi_hand_landmarks):
+                    points = np.array([
+                        [res.x, res.y, res.z] for res in hand_landmark.landmark
+                    ])
 
-            visibility = math.sqrt((x17-x5)**2 + (y17-y5)**2)
-            # print(visibility)
+                    x0, y0, _ = points[0]
+                    x5, y5, _ = points[5]
+                    x17, y17, _ = points[17]
+
+                    if(abs(x0*(y5-y17) + x5*(y17-y0) + x17*(y0-y5)) > threshold):
+                        visibility = True
+                        handIndex[idx] = points.flatten()
+            else:
+                points = np.array([
+                    [res.x, res.y, res.z] for res in self.results.multi_hand_landmarks[0].landmark
+                ])
+
+                x0, y0, _ = points[0]
+                x5, y5, _ = points[5]
+                x17, y17, _ = points[17]
+
+                if(abs(x0*(y5-y17) + x5*(y17-y0) + x17*(y0-y5)) > threshold):
+                    visibility = True
+                    label = self.results.multi_handedness[0].classification[0].label
+                    handIndex[label == "Left" and 0 or 1] = points.flatten()
+                
+            if(visibility):
+                self.keyPoints.append(np.array(handIndex).flatten())
+                self.keyPoints = self.keyPoints[(self.sequenceLength * -1):]
         
-        return(visibility > 50 and True or False)
+        return(visibility)
 
     def handsFinder(self, image):
-        if self.results.multi_hand_landmarks:
-            handLimbs = self.results.multi_hand_landmarks[0]
+        for handLimbs in self.results.multi_hand_landmarks:
             self.mpDraw.draw_landmarks(image, handLimbs, self.mpHands.HAND_CONNECTIONS)
 
         return image
-
-    def getKeyPoints(self):
-        self.keyPoints.append(np.array([
-            [res.x, res.y, res.z] for res in self.results.multi_hand_landmarks[0].landmark
-        ]).flatten())
-        self.keyPoints = self.keyPoints[(self.sequenceLength * -1):]
 
     def getPrediction(self):
         if len(self.keyPoints) == self.sequenceLength:
@@ -141,10 +149,8 @@ def main():
 
             if(handVisible):
                 image = tracker.handsFinder(frame) # Showing Hand Links in the Frame
-
-                tracker.getKeyPoints()
-                Thread(target=tracker.getPrediction).start()
-                # tracker.getPrediction()
+                Thread(target=tracker.getPrediction).start() # Starting Prediction in Annother Thread
+                # tracker.getPrediction() # Starting Prediction
                 image = tracker.showTextOnScreen(image, output=True)
             else:
                 image = tracker.showTextOnScreen(frame, isDark=False, isHandVisible=False)

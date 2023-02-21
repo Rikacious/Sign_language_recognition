@@ -1,26 +1,25 @@
 import os
 import cv2
 import json
+import time
 import numpy as np
 import mediapipe as mp
 from threading import Thread
 
 
 class dataCollection:
-    def __init__(self, detectionCon=0.5, modelComplexity=1, trackCon=0.5):
-        jsonFile = open('settings.json')
+    def __init__(self, mode=False, detectionCon=0.5, modelComplexity=1, trackCon=0.5):
+        jsonFile = open("settings.json")
         settings = json.load(jsonFile)
         jsonFile.close()
-        
-        self.detectionCon = detectionCon
-        self.modelComplex = modelComplexity
-        self.trackCon = trackCon
+
+        self.motionKeyPoints = []
         self.noSequence = settings['noSequence']
         self.sequenceLength = settings['sequenceLength']
         self.DATA_FOLDER = os.path.join(settings['rawDataDir'])
         self.createActions = np.array(settings['collectActions'])
         self.mpHands = mp.solutions.hands
-        self.hands = self.mpHands.Hands(False, 2,self.modelComplex, self.detectionCon, self.trackCon)
+        self.hands = self.mpHands.Hands(mode, 2, modelComplexity, detectionCon, trackCon)
         self.mpDraw = mp.solutions.drawing_utils
     
     @property
@@ -30,38 +29,30 @@ class dataCollection:
     def createDirectories(self):
         for action in self.createActions:
             print(f"Creating Directory for {action}")
-            for sequence in range(self.noSequence):
-                try:
-                    os.makedirs(os.path.join(self.DATA_FOLDER, action, str(sequence)))
-                except:
-                    pass
+            try:
+                os.makedirs(os.path.join(self.DATA_FOLDER, action))
+            except:
+                pass
             print(f"Directory Created for {action}")        
 
-    def showTextOnScreen(self, image, isDark=True, isHandVisible=False):
-        fontScale = 1
-        thickness = 2
+    def showWaitingText(self, image, text="", timer=0):
+        gap = 0.1
+        thickness = 1
+        fontScale = 0.7
+        color = (0,0,255)
+        textPos = (10, 25)
         font = cv2.FONT_HERSHEY_SIMPLEX
 
-        gap = 0.1
-        boxStart = (int(image.shape[1] * gap), int(image.shape[0] * gap))
+        timeLeft = timer - time.time()
 
-        if isDark:
-            color = (0, 0, 255)
-            text = "Video is Too Dark"
+        if timeLeft > 1:
+            timerText = text + " || " + str(int(timeLeft))
+        elif timeLeft > 0 and timeLeft < 1:
+            timerText = text + " || " + "Starting"
         else:
-            if isHandVisible:
-                color = (0, 255, 0)
-                text = "Hand is Visible Properly"
-            else:
-                color = (0, 0, 255)
-                text = "Hand Not Visible"
+            timerText = text + " || " + "Capturing"
 
-        textSize = cv2.getTextSize(text, font, fontScale, thickness)[0]
-        textX = int((image.shape[1] - textSize[0]) / 2)
-        textY = int((boxStart[1] + textSize[1]) / 2)
-
-        cv2.putText(image, text, (textX, textY), font, fontScale, color, thickness, cv2.LINE_AA)
-
+        cv2.putText(image, timerText, textPos, font, fontScale, color, thickness, cv2.LINE_AA)
         return image
 
     def getHandPosition(self, image):
@@ -70,18 +61,48 @@ class dataCollection:
 
     def handsFinder(self, image):
         if self.results.multi_hand_landmarks:
-            handLimbs = self.results.multi_hand_landmarks[0]
-            self.mpDraw.draw_landmarks(image, handLimbs, self.mpHands.HAND_CONNECTIONS)
+            for handLimbs in self.results.multi_hand_landmarks:
+                self.mpDraw.draw_landmarks(image, handLimbs, self.mpHands.HAND_CONNECTIONS)
 
         return image
 
-    def storeKeyPoints(self, action, sequence, frameNum):
-        keyPoints = np.array([
-            [res.x, res.y, res.z] for res in self.results.multi_hand_landmarks[0].landmark
-        ]).flatten() if self.results.multi_hand_landmarks else np.zeros(21*3)
+    def getKeyPoints(self):
+        threshold = 0.015
+        keyPoints = [np.zeros(21*3), np.zeros(21*3)]
 
-        npyPath = os.path.join(self.DATA_FOLDER, action, str(sequence), str(frameNum))
-        np.save(npyPath, keyPoints)
+        if self.results.multi_hand_landmarks:
+            if(len(self.results.multi_handedness) > 1):
+                for idx, hand_landmark in enumerate(self.results.multi_hand_landmarks):
+                    points = np.array([
+                        [res.x, res.y, res.z] for res in hand_landmark.landmark
+                    ])
+
+                    x0, y0, _ = points[0]
+                    x5, y5, _ = points[5]
+                    x17, y17, _ = points[17]
+
+                    if(abs(x0*(y5-y17) + x5*(y17-y0) + x17*(y0-y5)) > threshold):
+                        keyPoints[idx] = points.flatten()
+            else:
+                points = np.array([
+                    [res.x, res.y, res.z] for res in self.results.multi_hand_landmarks[0].landmark
+                ])
+
+                x0, y0, _ = points[0]
+                x5, y5, _ = points[5]
+                x17, y17, _ = points[17]
+
+                if(abs(x0*(y5-y17) + x5*(y17-y0) + x17*(y0-y5)) > threshold):
+                    label = self.results.multi_handedness[0].classification[0].label
+                    keyPoints[label == "Left" and 0 or 1] = points.flatten()
+        
+            self.motionKeyPoints.append(np.array(keyPoints).flatten())
+
+    def storeKeyPoints(self, action, sequence):
+        if len(self.motionKeyPoints) == 10:
+            nPyPath = os.path.join(self.DATA_FOLDER, action, str(sequence))
+            np.save(nPyPath, np.array(self.motionKeyPoints))
+            self.motionKeyPoints = []
 
     def updateSettings(self):
         jsonFile = open('settings.json', 'r+')
@@ -110,17 +131,18 @@ def main():
 
         for action in actions:
             for sequence in range(noSequence):
+                timerEnd = time.time() + 3 + 0.8 # Seeting Timer for Break between Videos
                 print(f"{action} || Video: {sequence} || Frame: 0 || WAITING")
-                for i in range(70):
+                while(timerEnd - time.time() > -0.2): # Loop until timer goes 0. 0.2 for Capture Overlap
                     success, frame = vc.read()
                     frame = cv2.flip(frame, 1) # Flipping Frame to get Mirror Effect
 
                     collect.getHandPosition(frame) # Track Hand Position with MediaPipe
                     image = collect.handsFinder(frame) # Showing Hand Links in the Frame
-
+                    image = collect.showWaitingText(image, f"{action} || VIDEO: {sequence}", timerEnd)
                     cv2.imshow("Collecting Hand Data", image)
                     cv2.waitKey(10)
-
+                
                 for frameNum in range(sequenceLength):
                     success, frame = vc.read()
                     frame = cv2.flip(frame, 1) # Flipping Frame to get Mirror Effect
@@ -131,11 +153,15 @@ def main():
                     if frameNum != 0:
                         print(f"{action} || Video: {sequence} || Frame: {frameNum}")
                     
+                    image = collect.showWaitingText(image, f"{action} || VIDEO: {sequence}")
                     cv2.imshow("Collecting Hand Data", image)
-                    collect.storeKeyPoints(action, sequence, frameNum)
+                    collect.getKeyPoints()
         
                     if cv2.waitKey(10) == 27: # exit on ESC
                         break
+
+                collect.storeKeyPoints(action, sequence)
+                
 
         collect.updateSettings()
         
