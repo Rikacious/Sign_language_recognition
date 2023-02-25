@@ -5,8 +5,12 @@
     "rawDataDir": "MP_DATA",
     "modelsDir": "Trained_Models",
     "lastModel": "",
-    "collectActions": [
-        "ZERO"
-    ],
-    "actions": []
+    "collectActions": [],
+    "actions": [
+        "ONE",
+        "TWO",
+        "THREE",
+        "FOUR",
+        "FIVE"
+    ]
 }
