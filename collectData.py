@@ -99,10 +99,9 @@ class dataCollection:
             self.motionKeyPoints.append(np.array(keyPoints).flatten())
 
     def storeKeyPoints(self, action, sequence):
-        if len(self.motionKeyPoints) == 10:
-            nPyPath = os.path.join(self.DATA_FOLDER, action, str(sequence))
-            np.save(nPyPath, np.array(self.motionKeyPoints))
-            self.motionKeyPoints = []
+        nPyPath = os.path.join(self.DATA_FOLDER, action, str(sequence))
+        np.save(nPyPath, np.array(self.motionKeyPoints))
+        self.motionKeyPoints = []
 
     def updateSettings(self):
         jsonFile = open('settings.json', 'r+')

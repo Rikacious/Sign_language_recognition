@@ -6,8 +6,7 @@
     "modelsDir": "Trained_Models",
     "lastModel": "",
     "collectActions": [
-        "ONE",
-        "TWO"
+        "ZERO"
     ],
     "actions": []
 }

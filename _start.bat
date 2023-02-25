@@ -8,9 +8,9 @@ set /p c=Enter Your Choise:
 
 if %c%==1 (
     python handTrack.py
-) else if %c%==1 (
+) else if %c%==2 (
     python collectData.py
-) else if %c%==1 (
+) else if %c%==3 (
     python trainDataset.py
 ) else (
     echo You've Entered the Wrong Input.
