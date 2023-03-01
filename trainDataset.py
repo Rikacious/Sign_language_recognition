@@ -36,6 +36,7 @@ class TrainDataset:
                 window = np.load(os.path.join(self.DATA_FOLDER, action, f"{sequence}.npy"))
                 sequences.append(window)
                 labels.append(labelMap[action])
+                # print(window.shape[0] != 15 and f"{action} {sequence}" or "")
 
         sequenceArr = np.array(sequences)
         labelsArr = to_categorical(labels).astype(int)
@@ -66,7 +67,7 @@ class TrainDataset:
         self.model.add(Dense(self.actions.shape[0], activation='softmax'))
 
         self.model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['categorical_accuracy'])
-        self.model.fit(seqTrain, lblTrain, epochs=180, callbacks=[tbCallback])
+        self.model.fit(seqTrain, lblTrain, epochs=200, callbacks=[tbCallback])
         self.model.summary()
 
     def predictData(self):

@@ -4,7 +4,7 @@
     "logDir": "Logs_TBoard",
     "rawDataDir": "MP_DATA",
     "modelsDir": "Trained_Models",
-    "lastModel": "",
+    "lastModel": "77ffbdc0-b50b-11ed-933f-244bfe8eca8e.h5",
     "collectActions": [],
     "actions": [
         "ONE",

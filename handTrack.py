@@ -11,7 +11,8 @@ from tensorflow.keras import models
 
 
 class handTracker():
-    def __init__(self, mode=False, maxHands=2, detectionCon=0.5, modelComplexity=1, trackCon=0.5):
+    def __init__(self, mode=False, maxHands=2, detectionCon=0.5, modelComplexity=1, trackCon=0.5, **kwargs):
+        super().__init__(**kwargs)
         jsonFile = open('settings.json')
         settings = json.load(jsonFile)
         jsonFile.close()
