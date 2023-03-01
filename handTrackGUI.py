@@ -8,27 +8,27 @@ class handTrackerGUI(handTracker, TrackerGUI):
     def __init__(self):
         super().__init__(maxHands=2, detectionCon=0.6)
 
-    def start(self, frame):
-        frame = cv2.flip(frame, 1) # Flipping Frame to get Mirror Effect
-        frameVisible = self.checkFrameVisibility(frame) # Checking Frame Visibility
-
-        print(self.getPredictOption)
+    def start(self, image):
+        frameVisible = self.checkFrameVisibility(image) # Checking Frame Visibility
 
         if not frameVisible:
-            image = self.showTextOnScreen(frame, isDark=True)
+            self.updateWarn("Frame Not Visible")
         else:
-            self.getHandPosition(frame) # Track Hand Position with MediaPipe
-        #     handVisible = self.getHandVisibility() # Checking Hand Visibility
+            Thread(
+                target=lambda: self.getHandPosition(image=image),
+            ).start() # Starting Prediction in Annother Thread
+            # self.getHandPosition(image) # Track Hand Position with MediaPipe
+            handVisible = self.getHandVisibility() # Checking Hand Visibility
 
-        #     if(handVisible):
-        #         image = self.handsFinder(frame) # Showing Hand Links in the Frame
-        #         Thread(target=self.getPrediction).start() # Starting Prediction in Annother Thread
-        #         # self.getPrediction() # Starting Prediction
-        #         # image = self.showTextOnScreen(image, output=True)
-        #     else:
-        #         image = self.showTextOnScreen(frame, isDark=False, isHandVisible=False)
+            if(handVisible):
+                self.updateWarn()
+                # image = self.handsFinder(image) # Showing Hand Links in the Frame
+                Thread(
+                    target=lambda: self.getPrediction(callBack=self.writeOutput),
+                ).start() # Starting Prediction in Annother Thread
+            else:
+                self.updateWarn("Hand Not Visible")
 
-        image = self.showFPS(frame) # Adding FPS to the Image
         return image
 
 

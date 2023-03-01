@@ -21,6 +21,7 @@ class handTracker():
         self.previousTime = 0
         self.sentence = []
         self.keyPoints = []
+        self.results = False
         self.mpHands = mp.solutions.hands
         self.hands = self.mpHands.Hands(mode, maxHands, modelComplexity, detectionCon, trackCon)
         self.mpDraw = mp.solutions.drawing_utils
@@ -78,7 +79,7 @@ class handTracker():
         threshold = 0.015
         handIndex = [np.zeros(21*3), np.zeros(21*3)]
 
-        if self.results.multi_hand_landmarks:
+        if self.results and self.results.multi_hand_landmarks:
             if(len(self.results.multi_handedness) > 1):
                 for idx, hand_landmark in enumerate(self.results.multi_hand_landmarks):
                     points = np.array([
@@ -118,14 +119,18 @@ class handTracker():
 
         return image
 
-    def getPrediction(self):
+    def getPrediction(self, callBack=None):
         if len(self.keyPoints) == self.sequenceLength:
             predict = self.model.predict(np.expand_dims(self.keyPoints, axis=0))[0]
             maxPredict = np.argmax(predict)
             # print(predict)
+            predictStr = self.actions[maxPredict]
 
-            if(predict[maxPredict] > 0.8):
-                self.sentence.append(self.actions[maxPredict])
+            if predict[maxPredict] > 0.8:
+                if (len(self.sentence)==0) or (self.sentence[len(self.sentence)-1] != predictStr):
+                    self.sentence.append(predictStr)
+                    if callBack != None:
+                        callBack(predictStr)
 
 
 def main():
