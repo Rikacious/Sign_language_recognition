@@ -1,16 +1,30 @@
 {
     "noSequence": 30,
-    "sequenceLength": 15,
     "logDir": "Logs_TBoard",
     "rawDataDir": "MP_DATA",
     "modelsDir": "Trained_Models",
-    "lastModel": "77ffbdc0-b50b-11ed-933f-244bfe8eca8e.h5",
-    "collectActions": [],
-    "actions": [
-        "ONE",
-        "TWO",
-        "THREE",
-        "FOUR",
-        "FIVE"
-    ]
+    "models": {
+        "char": "77ffbdc0-b50b-11ed-933f-244bfe8eca8e.h5",
+        "sign": "77ffbdc0-b50b-11ed-933f-244bfe8eca8e.h5"
+    },
+    "collectActions": {
+        "char": [],
+        "sign": []
+    },
+    "actions": {
+        "char": [
+            "ONE",
+            "TWO",
+            "THREE",
+            "FOUR",
+            "FIVE"
+        ],
+        "sign": [
+            "ONE",
+            "TWO",
+            "THREE",
+            "FOUR",
+            "FIVE"
+        ]
+    }
 }

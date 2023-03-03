@@ -4,7 +4,7 @@ from handTrack import handTracker
 from GUI import TrackerGUI
 
 
-class handTrackerGUI(handTracker, TrackerGUI):
+class handDetectGUI(handTracker, TrackerGUI):
     def __init__(self):
         super().__init__(maxHands=2, detectionCon=0.6)
 
@@ -34,7 +34,7 @@ class handTrackerGUI(handTracker, TrackerGUI):
 
 
 if __name__ == "__main__":
-    trackGUI = handTrackerGUI()
+    trackGUI = handDetectGUI()
     trackGUI.initiate()
     trackGUI.showFrame(callBack=trackGUI.start)
     trackGUI.mainloop()

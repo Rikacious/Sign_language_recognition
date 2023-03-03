@@ -25,9 +25,9 @@ class handTracker():
         self.mpHands = mp.solutions.hands
         self.hands = self.mpHands.Hands(mode, maxHands, modelComplexity, detectionCon, trackCon)
         self.mpDraw = mp.solutions.drawing_utils
-        self.sequenceLength = settings['sequenceLength']
-        self.actions = np.array(settings['actions'])
-        self.model = models.load_model(os.path.join(settings['modelsDir'], settings['lastModel']))
+        self.sequenceLength = 15
+        self.actions = np.array(settings['actions']['sign'])
+        self.model = models.load_model(os.path.join(settings['modelsDir'], settings['models']['sign']))
 
     def showTextOnScreen(self, image, output=False, isDark=True, isHandVisible=False):
         fontScale = 1
@@ -39,7 +39,7 @@ class handTracker():
 
         if output:
             color = (245, 117, 16)
-            text = len(self.sentence) > 0 and self.sentence[-1] or f"Detection Started {10 - len(self.keyPoints)}"
+            text = len(self.sentence) > 0 and self.sentence[-1] or f"Detection Started {self.sequenceLength - len(self.keyPoints)}"
         else:
             if isDark:
                 color = (0, 0, 255)
@@ -76,35 +76,26 @@ class handTracker():
 
     def getHandVisibility(self):
         visibility = False
-        threshold = 0.015
+        threshold = {"X": 0.0075, "Y": 0.0175}
         handIndex = [np.zeros(21*3), np.zeros(21*3)]
 
         if self.results and self.results.multi_hand_landmarks:
-            if(len(self.results.multi_handedness) > 1):
-                for idx, hand_landmark in enumerate(self.results.multi_hand_landmarks):
-                    points = np.array([
-                        [res.x, res.y, res.z] for res in hand_landmark.landmark
-                    ])
-
-                    x0, y0, _ = points[0]
-                    x5, y5, _ = points[5]
-                    x17, y17, _ = points[17]
-
-                    if(abs(x0*(y5-y17) + x5*(y17-y0) + x17*(y0-y5)) > threshold):
-                        visibility = True
-                        handIndex[idx] = points.flatten()
-            else:
+            for idx, hand_landmark in enumerate(self.results.multi_hand_landmarks):
                 points = np.array([
-                    [res.x, res.y, res.z] for res in self.results.multi_hand_landmarks[0].landmark
+                    [res.x, res.y, res.z] for res in hand_landmark.landmark
                 ])
 
                 x0, y0, _ = points[0]
                 x5, y5, _ = points[5]
                 x17, y17, _ = points[17]
 
-                if(abs(x0*(y5-y17) + x5*(y17-y0) + x17*(y0-y5)) > threshold):
+                disX = (x5 - x17)**2 + (y5 - y17)**2  #0.0081
+                disY = ((x5 + x17)/2 - x0)**2 + ((y5 + y17)/2 - y0)**2  #0.024
+                # print(disX, disY)
+
+                if(disX >= threshold["X"] or disY >= threshold["Y"]):
                     visibility = True
-                    label = self.results.multi_handedness[0].classification[0].label
+                    label = self.results.multi_handedness[idx].classification[0].label
                     handIndex[label == "Left" and 0 or 1] = points.flatten()
                 
             if(visibility):
@@ -144,22 +135,22 @@ def main():
 
     while vc.isOpened():
         success, frame = vc.read()
-        frame = cv2.flip(frame, 1) # Flipping Frame to get Mirror Effect
+        image = cv2.flip(frame, 1) # Flipping Frame to get Mirror Effect
         frameVisible = tracker.checkFrameVisibility(frame) # Checking Frame Visibility
 
         if not frameVisible:
-            image = tracker.showTextOnScreen(frame, isDark=True)
+            image = tracker.showTextOnScreen(image, isDark=True)
         else:
-            tracker.getHandPosition(frame) # Track Hand Position with MediaPipe
+            tracker.getHandPosition(image) # Track Hand Position with MediaPipe
             handVisible = tracker.getHandVisibility() # Checking Hand Visibility
 
             if(handVisible):
-                image = tracker.handsFinder(frame) # Showing Hand Links in the Frame
+                # image = tracker.handsFinder(image) # Showing Hand Links in the Frame
                 Thread(target=tracker.getPrediction).start() # Starting Prediction in Annother Thread
                 # tracker.getPrediction() # Starting Prediction
                 image = tracker.showTextOnScreen(image, output=True)
             else:
-                image = tracker.showTextOnScreen(frame, isDark=False, isHandVisible=False)
+                image = tracker.showTextOnScreen(image, isDark=False, isHandVisible=False)
 
         image = tracker.showFPS(image) # Adding FPS to the Image
         cv2.imshow("Hand Gesture Detection", image)
