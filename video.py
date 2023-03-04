@@ -84,9 +84,9 @@ class Video:
             return np.zeros(21*3)
 
     def handsFinder(self, image):
-        if self.results:
+        if self.results.multi_hand_landmarks:
             for handLimbs in self.results.multi_hand_landmarks:
                 self.mpDraw.draw_landmarks(image, handLimbs, self.mpHands.HAND_CONNECTIONS)
 
-            return image
+        return image
 

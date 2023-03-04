@@ -1,10 +1,7 @@
 import os
 import cv2
-import time
-import math
 import json
 import numpy as np
-import mediapipe as mp
 from threading import Thread
 
 from tensorflow.keras import models

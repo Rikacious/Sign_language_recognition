@@ -7,17 +7,13 @@
         "char": "77ffbdc0-b50b-11ed-933f-244bfe8eca8e.h5",
         "sign": "77ffbdc0-b50b-11ed-933f-244bfe8eca8e.h5"
     },
-    "collectActions": {
-        "char": [],
-        "sign": []
-    },
+    "collectActions": [
+        "TWO",
+        "THREE"
+    ],
     "actions": {
         "char": [
-            "ONE",
-            "TWO",
-            "THREE",
-            "FOUR",
-            "FIVE"
+            "ONE"
         ],
         "sign": [
             "ONE",
