@@ -53,7 +53,6 @@ class dataCollection(Video):
         return image
 
     def getKeyPoints(self):
-
         if self.results.multi_hand_landmarks:
             if self.type == "sign":
                 keyPoints = [np.zeros(21*3), np.zeros(21*3)]

@@ -13,19 +13,21 @@ from tensorflow.keras.callbacks import TensorBoard
 
 
 class TrainDataset:
-    def __init__(self, testSize=0.05):
+    def __init__(self, testSize=0.05, type="sign"):
         jsonFile = open('settings.json')
         settings = json.load(jsonFile)
         jsonFile.close()
 
+        self.modelType = type
         self.testSize = testSize
         self.noSequence = settings['noSequence']
-        self.sequenceLength = settings['sequenceLength']
-        self.DATA_FOLDER = os.path.join(settings['rawDataDir'])
+        self.sequenceLength = (type == 'sign' and 20 or type == 'char' and 10 or 0)
+        self.handCount = (type == 'sign' and 2 or type == 'char' and 1 or 0)
+        self.DATA_FOLDER = os.path.join(settings['rawDataDir'], type.upper())
         self.logDir = os.path.join(settings['logDir'])
         self.modelsDir = os.path.join(settings['modelsDir'])
-        self.lastModel = settings['lastModel']
-        self.actions = np.array(settings['actions'])
+        self.lastModel = settings['models'][type]
+        self.actions = np.array(settings['actions'][type])
 
     def getStoredData(self):
         sequences, labels = [], []
@@ -58,7 +60,7 @@ class TrainDataset:
         lblTrain = self.labels[0]
 
         self.model = models.Sequential()
-        self.model.add(LSTM(64, return_sequences=True, activation='relu', input_shape=(self.sequenceLength, 63*2)))
+        self.model.add(LSTM(64, return_sequences=True, activation='relu', input_shape=(self.sequenceLength, 63*self.handCount)))
         self.model.add(LSTM(128, return_sequences=True, activation='relu'))
         self.model.add(LSTM(64, return_sequences=False, activation='relu'))
 
@@ -92,7 +94,7 @@ class TrainDataset:
 
         jsonFile = open('settings.json', 'r+')
         settings = json.load(jsonFile)
-        settings['lastModel'] = modelName
+        settings['models'][self.modelType] = modelName
         jsonFile.seek(0)
         json.dump(settings, jsonFile, indent=4)
         jsonFile.close()
@@ -100,8 +102,9 @@ class TrainDataset:
 
 def main():
     trainModel = True
+    modelType = "char"  # char / sign
 
-    train = TrainDataset()
+    train = TrainDataset(type=modelType)
     train.getStoredData()
     
     if trainModel:

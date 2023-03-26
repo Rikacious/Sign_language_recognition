@@ -4,16 +4,22 @@
     "rawDataDir": "MP_DATA",
     "modelsDir": "Trained_Models",
     "models": {
-        "char": "77ffbdc0-b50b-11ed-933f-244bfe8eca8e.h5",
+        "char": "396ee2c2-cbe7-11ed-ba70-244bfe8eca8e.h5",
         "sign": "77ffbdc0-b50b-11ed-933f-244bfe8eca8e.h5"
     },
-    "collectActions": [
-        "TWO",
-        "THREE"
-    ],
+    "collectActions": [],
     "actions": {
         "char": [
-            "ONE"
+            "ONE",
+            "TWO",
+            "THREE",
+            "FOUR",
+            "FIVE",
+            "SIX",
+            "SEVEN",
+            "EIGHT",
+            "NINE",
+            "ZERO"
         ],
         "sign": [
             "ONE",

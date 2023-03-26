@@ -16,7 +16,7 @@ class handCharacter():
         settings = json.load(jsonFile)
         jsonFile.close()
 
-        self.charVid = Video(hands=2, detectionCon=0.6, seqLength=15) # seqLength Updated to 20
+        self.charVid = Video(hands=1, detectionCon=0.6, seqLength=10)
         self.actions = np.array(settings['actions']['char'])
         self.model = models.load_model(os.path.join(
             settings['modelsDir'], 
@@ -58,7 +58,7 @@ class handCharacter():
                 handPoints.append(points)
                 visibility = points.any()
 
-            self.charVid.keyPoints.append(handPoints)
+            self.charVid.keyPoints.append(np.array(handPoints).flatten())
             self.charVid.keyPoints = self.charVid.keyPoints[(self.charVid.seqLength * -1):]
         
         return(visibility)
@@ -89,7 +89,7 @@ def main():
         success, frame = vc.read()
         image = cv2.flip(frame, 1) # Flipping Frame to get Mirror Effect
         
-        image = tracker.startCharPrediction(image)
+        image = tracker.startCharPrediction(image, showFPS=True)
 
         cv2.imshow("Hand Gesture Detection", image)
         
