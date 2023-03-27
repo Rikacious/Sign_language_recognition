@@ -16,7 +16,7 @@ class TrackerGUI(CTKinter.CTk):
         self.previousTime = 0
         self.predictOption = 0
         self.vc = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-        self.predictTypes = ["CHARACTERS", "HAND GESTURES", "HAND MOVEMENT"]
+        self.predictTypes = ["NUMBERS", "ALPHABETS", "SIGN LANGUAGE", "MOVEMENT"]
 
         self.geometry("660x700")
         self.title("Hand Gesture Recognition")

@@ -17,6 +17,7 @@ class dataCollection(Video):
         jsonFile.close()
 
         self.type = type
+        self.seqLength = seqLength
         self.noSequence = settings['noSequence']
         self.DATA_FOLDER = os.path.join(settings['rawDataDir'], str(type.upper()))
         self.createActions = np.array(settings['collectActions'])
@@ -69,7 +70,7 @@ class dataCollection(Video):
             
                 self.keyPoints.append(np.array(keyPoints).flatten())
 
-            elif self.type == "char":
+            elif self.type in ["number", "alphabet"]:
                 hand_landmark = self.results.multi_hand_landmarks[0]
                 points = self.getHandPoints(hand_landmark)
                 self.keyPoints.append(points)
@@ -98,11 +99,13 @@ def main():
     vc.set(cv2.CAP_PROP_FPS, 30)
     vc.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
 
-    collectType = "char" # char | sign
+    collectType = "number" # number | alphabet | sign
 
     if vc.isOpened():
-        if collectType == "char":
-            collect = dataCollection(hands=1, detectionCon=0.6, seqLength=10, type="char")
+        if collectType == "number":
+            collect = dataCollection(hands=1, detectionCon=0.6, seqLength=5, type="number")
+        elif collectType == "alphabet":
+            collect = dataCollection(hands=1, detectionCon=0.6, seqLength=10, type="alphabet")
         elif collectType == "sign":
             collect = dataCollection(hands=2, detectionCon=0.6, seqLength=20, type="sign")
         else:

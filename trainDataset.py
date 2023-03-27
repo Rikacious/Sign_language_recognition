@@ -21,13 +21,13 @@ class TrainDataset:
         self.modelType = type
         self.testSize = testSize
         self.noSequence = settings['noSequence']
-        self.sequenceLength = (type == 'sign' and 20 or type == 'char' and 10 or 0)
-        self.handCount = (type == 'sign' and 2 or type == 'char' and 1 or 0)
+        self.sequenceLength = (type == 'sign' and 20 or type == 'alphabet' and 10 or 5)
+        self.handCount = (type == 'sign' and 2 or type in ['number', 'alphabet'] and 1 or 0)
         self.DATA_FOLDER = os.path.join(settings['rawDataDir'], type.upper())
         self.logDir = os.path.join(settings['logDir'])
         self.modelsDir = os.path.join(settings['modelsDir'])
-        self.lastModel = settings['models'][type]
-        self.actions = np.array(settings['actions'][type])
+        self.lastModel = settings['models'][self.modelType]
+        self.actions = np.array(settings['actions'][self.modelType])
 
     def getStoredData(self):
         sequences, labels = [], []
@@ -69,7 +69,7 @@ class TrainDataset:
         self.model.add(Dense(self.actions.shape[0], activation='softmax'))
 
         self.model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['categorical_accuracy'])
-        self.model.fit(seqTrain, lblTrain, epochs=200, callbacks=[tbCallback])
+        self.model.fit(seqTrain, lblTrain, epochs=400, callbacks=[tbCallback])
         self.model.summary()
 
     def predictData(self):
@@ -102,7 +102,7 @@ class TrainDataset:
 
 def main():
     trainModel = True
-    modelType = "char"  # char / sign
+    modelType = "number"  # number | alphabet | sign
 
     train = TrainDataset(type=modelType)
     train.getStoredData()
