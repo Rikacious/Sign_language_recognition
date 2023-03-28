@@ -16,7 +16,7 @@ class handSign():
         settings = json.load(jsonFile)
         jsonFile.close()
 
-        self.signVid = Video(hands=2, detectionCon=0.6, seqLength=15) # seqLength Updated to 20
+        self.signVid = Video(hands=2, detectionCon=0.6, seqLength=20) # seqLength Updated to 20
         self.actions = np.array(settings['actions']['sign'])
         self.model = models.load_model(os.path.join(
             settings['modelsDir'], 
@@ -57,7 +57,7 @@ class handSign():
                 label = self.signVid.results.multi_handedness[idx].classification[0].label
                 points = self.signVid.getHandPoints(hand_landmark)
 
-                handIndex[label == "Left" and 0 or 1] = points
+                handIndex[label == "Left" and 0 or 1] = points.flatten()
                 visibility = points.any()
 
             if(visibility):
@@ -72,10 +72,11 @@ class handSign():
             maxPredict = np.argmax(predict)
             predictStr = self.actions[maxPredict]
 
-            if predict[maxPredict] > 0.8 and predictStr != self.signVid.lastPredict:
-                    self.signVid.lastPredict = predictStr
-                    if callBack != None:
-                        callBack(predictStr)
+
+            if predict[maxPredict] >= 1 and predictStr != self.signVid.lastPredict:
+                self.signVid.lastPredict = predictStr
+                if callBack != None:
+                    callBack(predictStr)
 
 
 def main():

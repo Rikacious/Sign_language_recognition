@@ -55,7 +55,7 @@ class handNumber():
         if self.numVid.results and self.numVid.results.multi_hand_landmarks:
             for idx, hand_landmark in enumerate(self.numVid.results.multi_hand_landmarks):
                 points = self.numVid.getHandPoints(hand_landmark)
-                handPoints.append(points)
+                handPoints.append(points.flatten())
                 visibility = points.any()
 
             self.numVid.keyPoints.append(np.array(handPoints).flatten())

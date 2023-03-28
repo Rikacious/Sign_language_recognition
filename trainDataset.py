@@ -38,7 +38,8 @@ class TrainDataset:
                 window = np.load(os.path.join(self.DATA_FOLDER, action, f"{sequence}.npy"))
                 sequences.append(window)
                 labels.append(labelMap[action])
-                # print(window.shape[0] != 15 and f"{action} {sequence}" or "")
+                # print(f"{action} : {sequence} : {window.shape}")
+                # print(window.shape[0] != 20 and f"{action} {sequence}" or "")
 
         sequenceArr = np.array(sequences)
         labelsArr = to_categorical(labels).astype(int)
@@ -102,7 +103,7 @@ class TrainDataset:
 
 def main():
     trainModel = True
-    modelType = "number"  # number | alphabet | sign
+    modelType = "sign"  # number | alphabet | sign
 
     train = TrainDataset(type=modelType)
     train.getStoredData()

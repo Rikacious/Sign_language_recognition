@@ -79,7 +79,7 @@ class Video:
         # print(disX, disY)
 
         if (disX >= threshold["X"] or disY >= threshold["Y"]):
-            return np.array(points).flatten()
+            return np.array(points)
         else:
             return np.zeros(21*3)
 

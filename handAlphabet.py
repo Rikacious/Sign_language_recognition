@@ -55,7 +55,7 @@ class handAlphabet():
         if self.alpVid.results and self.alpVid.results.multi_hand_landmarks:
             for idx, hand_landmark in enumerate(self.alpVid.results.multi_hand_landmarks):
                 points = self.alpVid.getHandPoints(hand_landmark)
-                handPoints.append(points)
+                handPoints.append(points.flatten())
                 visibility = points.any()
 
             self.alpVid.keyPoints.append(np.array(handPoints).flatten())

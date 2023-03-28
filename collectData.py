@@ -56,24 +56,25 @@ class dataCollection(Video):
     def getKeyPoints(self):
         if self.results.multi_hand_landmarks:
             if self.type == "sign":
-                keyPoints = [np.zeros(21*3), np.zeros(21*3)]
+                keyPoints = []
 
-                if(len(self.results.multi_handedness) > 1):
+                if(len(self.results.multi_handedness) == 2):
                     for idx, hand_landmark in enumerate(self.results.multi_hand_landmarks):
                         points = self.getHandPoints(hand_landmark)
-                        handPoints.append(points)
+                        keyPoints.append(points.flatten())
                 else:
+                    keyPoints = [np.zeros(21*3), np.zeros(21*3)]
                     hand_landmark = self.results.multi_hand_landmarks[0]
                     label = self.results.multi_handedness[0].classification[0].label
                     points = self.getHandPoints(hand_landmark)
-                    keyPoints[label == "Left" and 0 or 1] = points
+                    keyPoints[label == "Left" and 0 or 1] = points.flatten()
             
                 self.keyPoints.append(np.array(keyPoints).flatten())
 
             elif self.type in ["number", "alphabet"]:
                 hand_landmark = self.results.multi_hand_landmarks[0]
                 points = self.getHandPoints(hand_landmark)
-                self.keyPoints.append(points)
+                self.keyPoints.append(points.flatten())
 
     def storeKeyPoints(self, action, sequence):
         nPyPath = os.path.join(self.DATA_FOLDER, action, str(sequence))
@@ -99,7 +100,7 @@ def main():
     vc.set(cv2.CAP_PROP_FPS, 30)
     vc.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
 
-    collectType = "number" # number | alphabet | sign
+    collectType = "sign" # number | alphabet | sign
 
     if vc.isOpened():
         if collectType == "number":
