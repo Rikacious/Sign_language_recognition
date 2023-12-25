@@ -15,8 +15,9 @@ class handNumber():
         jsonFile = open('settings.json')
         settings = json.load(jsonFile)
         jsonFile.close()
-
-        self.numVid = Video(hands=1, detectionCon=0.6, seqLength=5)
+        
+        self.tipIds = [4, 8, 12, 16, 20]
+        self.numVid = Video(hands=1, detectionCon=0.6, seqLength=1)
         self.actions = np.array(settings['actions']['number'])
         self.model = models.load_model(os.path.join(
             settings['modelsDir'], 
@@ -25,23 +26,26 @@ class handNumber():
 
     def startNumPrediction(self, image, errFunc=None, opFunc=None, showFPS=False):
         if not self.numVid.checkVisibility(image): # Checking Frame Visibility
+            errText = "Video too Dark."
             if errFunc == None:
-                image = self.numVid.showText(image, isDark=True)
+                image = self.numVid.showText(image, errText, color=(0,0,255))
             else:
-                errFunc("Video too Dark.")
+                errFunc(errText)
         else:
             self.numVid.getHandPosition(image) # Track Hand Position with MediaPipe
 
             if(self.getHandNumPoints()):
                 # image = tracker.handsFinder(image) # Showing Hand Links in the Frame
+                image = self.numVid.showBBox(image) # Showing Hand Bounding Box in the Frame
                 Thread(target=lambda: self.getNumPrediction(opFunc)).start() # Starting Prediction in Annother Thread
                 if opFunc == None:
-                    image = self.numVid.showText(image, output=True)
+                    image = self.numVid.showText(image, predict=True)
             else:
+                errText = "Hand not Detected Properly."
                 if errFunc == None:
-                    image = self.numVid.showText(image, isDark=False, isHandVisible=False)
+                    image = self.numVid.showText(image, errText, color=(0, 0, 255))
                 else:
-                    errFunc("Hand Not Visible.")
+                    errFunc(errText)
 
         if showFPS:
             image = self.numVid.showFPS(image) # Adding FPS to the Image
@@ -55,17 +59,66 @@ class handNumber():
         if self.numVid.results and self.numVid.results.multi_hand_landmarks:
             for idx, hand_landmark in enumerate(self.numVid.results.multi_hand_landmarks):
                 points = self.numVid.getHandPoints(hand_landmark)
-                handPoints.append(points.flatten())
-                visibility = points.any()
+                handPoints.append(points)
+                visibility = (np.array(points).flatten()).any()
 
-            self.numVid.keyPoints.append(np.array(handPoints).flatten())
+            self.numVid.keyPoints.append(np.array(handPoints))
             self.numVid.keyPoints = self.numVid.keyPoints[(self.numVid.seqLength * -1):]
         
         return(visibility)
 
+    def getFingureIsUp(self, points):
+        fingers = [0, 0, 0, 0, 0]
+        points = [(point[0] * 640, point[1] * 480) for point in points]
+
+        # All Four Fingures exept Thumb
+        for id in range(1, 5):
+            fingers[id] =  (points[self.tipIds[id]][1] < points[self.tipIds[id] - 1][1]) and 1 or 0
+
+        # For Thumb Only
+        label = self.numVid.results.multi_handedness[0].classification[0].label
+        if(label == "Right"):
+            fingers[0] = (points[self.tipIds[0]][0] < points[self.tipIds[0] - 1][0]) and 1 or 0
+        else:
+            fingers[0] = (points[self.tipIds[0]][0] > points[self.tipIds[0] - 1][0]) and 1 or 0
+
+        return fingers
+
     def getNumPrediction(self, callBack=None):
         if len(self.numVid.keyPoints) == self.numVid.seqLength:
-            predict = self.model.predict(np.expand_dims(self.numVid.keyPoints, axis=0))[0]
+            fUpList = self.getFingureIsUp(self.numVid.keyPoints[0][0])
+            predictStr = ""
+
+            if (fUpList == [0, 1, 0, 0, 0]):
+                predictStr = "ONE"
+            elif (fUpList == [0, 1, 1, 0, 0]):
+                predictStr = "TWO"
+            elif (fUpList == [0, 0, 1, 1, 1]):
+                predictStr = "THREE"
+            elif (fUpList == [0, 1, 1, 1, 1]):
+                predictStr = "FOUR"
+            elif (fUpList == [1, 1, 1, 1, 1]):
+                predictStr = "FIVE"
+            elif (fUpList == [0, 1, 1, 1, 0]):
+                predictStr = "SIX"
+            elif (fUpList == [0, 1, 1, 0, 1]):
+                predictStr = "SEVEN"
+            elif (fUpList == [0, 1, 0, 1, 1]):
+                predictStr = "EIGHT"
+            elif (fUpList == [0, 0, 1, 1, 1]):
+                predictStr = "NINE"
+            elif (fUpList == [0, 0, 0, 0, 0]):
+                predictStr = "ZERO"
+
+            if predictStr != self.numVid.lastPredict:
+                # print(predictStr)
+                self.numVid.lastPredict = predictStr
+                if callBack != None:
+                    callBack(predictStr)
+
+            '''
+            predictPoints = self.numVid.keyPoints[0].flatten()
+            predict = self.model.predict(np.expand_dims(predictPoints, axis=0))[0]
             maxPredict = np.argmax(predict)
             # print(predict)
             predictStr = self.actions[maxPredict]
@@ -74,6 +127,8 @@ class handNumber():
                     self.numVid.lastPredict = predictStr
                     if callBack != None:
                         callBack(predictStr)
+            '''
+            
 
 
 def main():

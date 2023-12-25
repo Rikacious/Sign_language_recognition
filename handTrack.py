@@ -16,23 +16,28 @@ class handDetector():
  
     def startHandTracking(self, image, errFunc=None, opFunc=None, showFPS=False, draw=True):
         if not self.trkVid.checkVisibility(image): # Checking Frame Visibility
+            errText = "Video too Dark."
             if errFunc == None:
-                image = self.trkVid.showText(image, isDark=True)
+                image = self.trkVid.showText(image, errText, color=(0,0,255))
             else:
-                errFunc("Video too Dark.")
+                errFunc(errText)
         else:
             self.trkVid.getHandPosition(image) # Track Hand Position with MediaPipe
 
             if(self.getHandNumPoints()):
                 image = self.trkVid.handsFinder(image) # Showing Hand Links in the Frame
+                # image = self.trkVid.showBBox(image) # Showing Hand Bounding Box in the Frame
+
+                image = self.detectTracking(image)
 
                 if opFunc == None:
-                    image = self.trkVid.showText(image, output=True)
+                    image = self.trkVid.showText(image, predict=True)
             else:
+                errText = "Hand not Detected Properly."
                 if errFunc == None:
-                    image = self.trkVid.showText(image, isDark=False, isHandVisible=False)
+                    image = self.trkVid.showText(image, errText, color=(0,0,255))
                 else:
-                    errFunc("Hand Not Visible.")
+                    errFunc(errText)
 
         if showFPS:
             image = self.trkVid.showFPS(image) # Adding FPS to the Image
@@ -69,6 +74,61 @@ class handDetector():
  
         return fingers
  
+    def detectTracking(self, img):
+        ##########################
+        wCam, hCam = 640, 480
+        frameR = 100 # Frame Reduction
+        smoothening = 7
+        plocX, plocY = 0, 0
+        wScr, hScr = (1920, 1080)
+        #########################
+
+        cv2.rectangle(img, (frameR, frameR - 45), (wCam - frameR, hCam - frameR - 45), (255, 0, 255), 2)
+
+        # 2. Get the tip of the index and middle fingers
+        if len(self.lmList) != 0:
+            x1, y1 = self.lmList[8][1:]
+            x2, y2 = self.lmList[12][1:]
+            # print(x1, y1, x2, y2)
+        
+        # 3. Check which fingers are up
+        fingers = self.fingersUp()
+        # print(fingers)
+
+        # 4. Only Index Finger : Moving Mode
+        if fingers == [0, 1, 0, 0, 0]:
+            # 5. Convert Coordinates
+            x3 = np.interp(x1, (frameR, wCam - frameR), (0, wScr))
+            y3 = np.interp(y1, (frameR - 45, hCam - frameR - 45), (0, hScr))
+
+            # 6. Smoothen Values
+            plocX = plocX + (x3 - plocX) / smoothening
+            plocY = plocY + (y3 - plocY) / smoothening
+
+            # plocX = ((plocX) / (wCam - frameR)) * wScr
+
+            print(plocX, (wCam - (frameR * 2)))
+        
+            # 7. Move Mouse
+            # autopy.mouse.move(wScr - clocX, clocY)
+            cv2.circle(img, (x1, y1), 5, (255, 0, 255), cv2.FILLED)
+            # plocX, plocY = clocX, clocY
+            # print(clocX, clocY)
+            self.trkVid.lastPredict = f"Cursor at: {str(int(plocX))}, {str(int(plocY))}"
+            
+        # 8. Both Index and middle fingers are up : Clicking Mode
+        if fingers == [0, 1, 1, 0, 0]:
+            # 9. Find distance between fingers
+            length, img, lineInfo = self.findDistance(8, 12, img)
+            # print(length)
+            # 10. Click mouse if distance short
+            if length < 40:
+                cv2.circle(img, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
+                # autopy.mouse.click()
+                self.trkVid.lastPredict = "Mouse Click"
+        
+        return img
+
     def findDistance(self, p1, p2, img, draw=True, r=15, t=3):
         x1, y1 = self.lmList[p1][1:]
         x2, y2 = self.lmList[p2][1:]
@@ -89,7 +149,7 @@ def main():
     ##########################
     wCam, hCam = 640, 480
     frameR = 100 # Frame Reduction
-    smoothening = 7
+    smoothening = 5
     #########################
     
     pTime = 0
@@ -112,6 +172,7 @@ def main():
         img = cv2.flip(img, 1) # Flipping Frame to get Mirror Effect
         img, lmList = detector.startHandTracking(img, showFPS=True)
         
+        '''
         # 2. Get the tip of the index and middle fingers
         if len(lmList) != 0:
             x1, y1 = lmList[8][1:]
@@ -120,27 +181,28 @@ def main():
         
         # 3. Check which fingers are up
         fingers = detector.fingersUp()
-        print(fingers)
+        # print(fingers)
 
-        cv2.rectangle(img, (frameR, frameR), (wCam - frameR, hCam - frameR), (255, 0, 255), 2)
+        cv2.rectangle(img, (frameR, frameR - 45), (wCam - frameR, hCam - frameR - 45), (255, 0, 255), 2)
 
         # 4. Only Index Finger : Moving Mode
-        if fingers[1] == 1 and fingers[2] == 0 and fingers[3] == 0:
+        if fingers == [0, 1, 0, 0, 0]:
             # 5. Convert Coordinates
             x3 = np.interp(x1, (frameR, wCam - frameR), (0, wScr))
-            y3 = np.interp(y1, (frameR, hCam - frameR), (0, hScr))
+            y3 = np.interp(y1, (frameR - 45, hCam - frameR - 45), (0, hScr))
             # 6. Smoothen Values
             clocX = plocX + (x3 - plocX) / smoothening
             clocY = plocY + (y3 - plocY) / smoothening
         
             # 7. Move Mouse
             # autopy.mouse.move(wScr - clocX, clocY)
-            cv2.circle(img, (x1, y1), 15, (255, 0, 255), cv2.FILLED)
+            cv2.circle(img, (x1, y1), 5, (255, 0, 255), cv2.FILLED)
             plocX, plocY = clocX, clocY
-            detector.trkVid.lastPredict = f"Cursor at: {str(int(wScr - clocX))}, {str(int(clocY))}"
+            print(clocX, clocY)
+            detector.trkVid.lastPredict = f"Cursor at: {str(int(clocX))}, {str(int(clocY))}"
             
         # 8. Both Index and middle fingers are up : Clicking Mode
-        if fingers[1] == 1 and fingers[2] == 1 and fingers[3] == 0:
+        if fingers == [0, 1, 1, 0, 0]:
             # 9. Find distance between fingers
             length, img, lineInfo = detector.findDistance(8, 12, img)
             # print(length)
@@ -150,7 +212,7 @@ def main():
                 15, (0, 255, 0), cv2.FILLED)
                 # autopy.mouse.click()
                 detector.trkVid.lastPredict = "Mouse Click"
-        
+        '''
         # 12. Display
         cv2.imshow("Hand Tracking", img)
 

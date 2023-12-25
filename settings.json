@@ -8,7 +8,9 @@
         "number": "05f36da6-cc5b-11ed-8400-244bfe8eca8e.h5",
         "sign": "e38f8a39-cd77-11ed-9e61-244bfe8eca8e.h5"
     },
-    "collectActions": [],
+    "collectActions": [
+        "Hi"
+    ],
     "actions": {
         "alphabet": [],
         "number": [

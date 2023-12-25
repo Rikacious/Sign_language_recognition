@@ -18,24 +18,19 @@ class Video:
         self.mpDraw = mp.solutions.drawing_utils
         self.results = False
 
-    def showText(self, image, output=False, isDark=True, isHandVisible=False):
+    def showText(self, image, text="", color=(245, 117, 16), predict=False):
         fontScale = 1
         thickness = 2
         font = cv2.FONT_HERSHEY_SIMPLEX
 
         gap = 0.1
         boxStart = (int(image.shape[1] * gap), int(image.shape[0] * gap))
-
-        if output:
-            color = (245, 117, 16)
-            text = self.lastPredict != None and self.lastPredict or f"Detection Started {self.seqLength - len(self.keyPoints)}"
-        else:
-            if isDark:
-                color = (0, 0, 255)
-                text = "Video is Too Dark"
-            elif not isHandVisible:
-                color = (0, 0, 255)
-                text = "Hand Not Visible"
+        
+        if(predict):
+            if(self.lastPredict != None):
+                text = self.lastPredict
+            else:
+                text = "Detection Started"
 
         textSize = cv2.getTextSize(text, font, fontScale, thickness)[0]
         textX = int((image.shape[1] - textSize[0]) / 2)
@@ -64,7 +59,7 @@ class Video:
         self.results = self.hands.process(imageRGB)
 
     def getHandPoints(self, hand_landmark):
-        threshold = {"X": 0.0075, "Y": 0.0175}
+        threshold = {"X": 0.0050, "Y": 0.0175}  #  X : 0.0075 || Y : 0.0175
 
         points = np.array([
             [res.x, res.y, res.z] for res in hand_landmark.landmark
@@ -79,9 +74,10 @@ class Video:
         # print(disX, disY)
 
         if (disX >= threshold["X"] or disY >= threshold["Y"]):
+            print(disX, disY)
             return np.array(points)
         else:
-            return np.zeros(21*3)
+            return np.zeros(shape=(21, 3))
 
     def handsFinder(self, image):
         if self.results.multi_hand_landmarks:
@@ -89,4 +85,17 @@ class Video:
                 self.mpDraw.draw_landmarks(image, handLimbs, self.mpHands.HAND_CONNECTIONS)
 
         return image
+
+    def showBBox(self, image):
+        if len(self.keyPoints) > 0:
+            for points in self.keyPoints[-1]:
+                xList = [int(point[0]*640) for point in points]
+                yList = [int(point[1]*480) for point in points]
+                start = min(xList) - 20, min(yList) - 20
+                end = max(xList) + 20, max(yList) + 20
+                
+                cv2.rectangle(image, start, end, (0, 255, 0), 2)
+
+        return(image)
+
 
