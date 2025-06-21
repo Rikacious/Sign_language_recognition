@@ -37,7 +37,7 @@ class TrackerGUI(CTKinter.CTk):
         self.vc.set(cv2.CAP_PROP_FPS, 30)
         self.vc.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
 
-        self.vidCanvas = CTKinter.CTkCanvas(self, width=640, height=480, highlightthickness=0, bg="black")
+        self.vidCanvas = CTKinter.CTkCanvas(self, width=640, height=480, highlightthickness=0, bg="grey")
         self.vidCanvas.pack(padx=10, pady=10)
 
         self.vidFrame = self.vidCanvas.create_image(0,0, anchor=TK.NW)
@@ -91,6 +91,9 @@ class TrackerGUI(CTKinter.CTk):
             self.opFrame.see(TK.END)
             self.opFrame.configure(state="disabled")
     
+from predictor import Predictor
+predictor = Predictor()
+app.showFrame(callBack=predictor)
 
 
 if __name__ == "__main__":
